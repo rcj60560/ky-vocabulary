@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考研英语二真题单词频率统计</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #dee2e6;
+            background: #f8f9fa;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: #f0f1f3;
+            position: sticky;
+            top: 0;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        th:hover {
+            background: #e0e2e7;
+        }
+
+        th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.5;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+            color: #667eea;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+            color: #667eea;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .rank {
+            font-weight: 600;
+            color: #667eea;
+            width: 50px;
+        }
+
+        .word {
+            font-weight: 600;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            min-width: 80px;
+        }
+
+        .frequency {
+            text-align: center;
+            font-weight: 600;
+            color: #764ba2;
+            width: 80px;
+        }
+
+        .years {
+            color: #666;
+            font-size: 13px;
+            max-width: 300px;
+        }
+
+        .year-badge {
+            display: inline-block;
+            background: #e7f3ff;
+            color: #0066cc;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin: 2px 4px 2px 0;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .word-forms {
+            color: #999;
+            font-size: 12px;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .stats {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .no-results {
+            padding: 40px;
+            text-align: center;
+            color: #999;
+            font-size: 16px;
+        }
+
+        .year-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .year-btn {
+            padding: 6px 12px;
+            background: #f0f1f3;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .year-btn:hover {
+            background: #e0e2e7;
+        }
+
+        .year-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .info-text {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>📚 考研英语二真题单词频率统计</h1>
+            <p>基于2010-2023年考研英语II真题的词汇分析系统</p>
+        </div>
+
+        <!-- 加载状态 -->
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <p>正在加载数据中...</p>
+        </div>
+
+        <!-- 主要内容（初始隐藏） -->
+        <div id="mainContent" style="display: none;">
+            <!-- 控制面板 -->
+            <div class="controls">
+                <div class="control-group">
+                    <label for="searchInput">🔍 搜索单词:</label>
+                    <input type="text" id="searchInput" placeholder="输入单词或词根...">
+                </div>
+                <div class="control-group">
+                    <label for="minFrequency">最小频率:</label>
+                    <input type="number" id="minFrequency" min="1" value="1" style="width: 60px;">
+                </div>
+                <div class="control-group">
+                    <label for="sortBy">排序:</label>
+                    <select id="sortBy">
+                        <option value="frequency">按频率 ↓</option>
+                        <option value="alpha">按字母</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 标签页 -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="overall">总体统计</button>
+                <button class="tab-btn" data-tab="yearly">按年份统计</button>
+            </div>
+
+            <!-- 总体统计标签页 -->
+            <div class="tab-content active" id="overallTab">
+                <div class="table-wrapper">
+                    <table id="overallTable">
+                        <thead>
+                            <tr>
+                                <th class="rank">排名</th>
+                                <th class="word">单词</th>
+                                <th class="frequency sortable">频率</th>
+                                <th class="years">出现年份</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overallTableBody">
+                            <tr class="no-results"><td colspan="4">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 按年份统计标签页 -->
+            <div class="tab-content" id="yearlyTab">
+                <div class="year-selector" id="yearSelector"></div>
+                <p class="info-text">选择年份查看该年的高频词汇</p>
+                
+                <div class="table-wrapper" style="margin-top: 20px;">
+                    <table id="yearlyTable">
+                        <thead>
+                            <tr>
+                                <th class="rank">排名</th>
+                                <th class="word">单词</th>
+                                <th class="frequency sortable" id="yearFreqHeader">该年频率</th>
+                                <th class="frequency sortable">总频率</th>
+                                <th class="years">出现年份</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yearlyTableBody">
+                            <tr class="no-results"><td colspan="5">请选择年份</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalWordsCount">-</div>
+                    <div class="stat-label">总频数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uniqueWordsCount">-</div>
+                    <div class="stat-label">不同单词</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="yearRangeText">-</div>
+                    <div class="stat-label">年份范围</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="resultCountText">-</div>
+                    <div class="stat-label">搜索结果</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局数据
+        let allData = null;
+        let filteredData = null;
+        let currentYear = null;
+        let currentSort = { column: 'frequency', direction: 'desc' };
+
+        // 加载JSON数据
+        async function loadData() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                allData = await response.json();
+                console.log('✅ 数据加载成功', allData);
+                initializeUI();
+            } catch (error) {
+                console.error('❌ 数据加载失败:', error);
+                document.getElementById('loadingState').innerHTML = 
+                    `<p style="color: red;">❌ 数据加载失败: ${error.message}</p>`;
+            }
+        }
+
+        // 初始化UI
+        function initializeUI() {
+            // 隐藏加载状态，显示主内容
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            // 初始化过滤数据
+            filteredData = [...allData.words];
+
+            // 更新统计数据
+            document.getElementById('totalWordsCount').textContent = allData.totalWords.toLocaleString();
+            document.getElementById('uniqueWordsCount').textContent = allData.uniqueWords.toLocaleString();
+            document.getElementById('yearRangeText').textContent = 
+                `${allData.yearRange[0]}-${allData.yearRange[1]}`;
+
+            // 初始化年份选择器
+            const yearSelector = document.getElementById('yearSelector');
+            for (let year = allData.yearRange[0]; year <= allData.yearRange[1]; year++) {
+                const btn = document.createElement('button');
+                btn.className = 'year-btn';
+                btn.textContent = year;
+                btn.onclick = () => selectYear(year, btn);
+                yearSelector.appendChild(btn);
+            }
+
+            // 设置默认年份
+            currentYear = allData.yearRange[0];
+            yearSelector.firstChild.classList.add('active');
+
+            // 绑定事件
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('minFrequency').addEventListener('change', applyFilters);
+            document.getElementById('sortBy').addEventListener('change', applyFilters);
+            
+            // 标签页切换
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+                    
+                    if (btn.dataset.tab === 'overall') {
+                        renderOverallTable();
+                    } else {
+                        renderYearlyTable();
+                    }
+                });
+            });
+
+            // 初始化表格
+            renderOverallTable();
+        }
+
+        // 选择年份
+        function selectYear(year, btnElement) {
+            currentYear = year;
+            document.querySelectorAll('.year-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            applyFilters();
+            renderYearlyTable();
+        }
+
+        // 应用过滤和排序
+        function applyFilters() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
+            const minFreq = parseInt(document.getElementById('minFrequency').value) || 1;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // 过滤数据
+            filteredData = allData.words.filter(item => {
+                // 搜索过滤：可以搜索单词本身或相关词形
+                if (searchText) {
+                    const word = item.word.toLowerCase();
+                    const matchesWord = word.includes(searchText);
+                    
+                    // 检查相关词形
+                    const relatedWords = getAllRelatedWords(item.word);
+                    const matchesRelated = relatedWords.some(w => w.toLowerCase().includes(searchText));
+                    
+                    if (!matchesWord && !matchesRelated) return false;
+                }
+                
+                // 频率过滤
+                if (item.total < minFreq) return false;
+                
+                return true;
+            });
+
+            // 排序
+            if (sortBy === 'frequency') {
+                filteredData.sort((a, b) => b.total - a.total);
+            } else if (sortBy === 'alpha') {
+                filteredData.sort((a, b) => a.word.localeCompare(b.word));
+            }
+
+            // 更新结果计数
+            document.getElementById('resultCountText').textContent = filteredData.length;
+
+            // 重新渲染当前标签页的表格
+            const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+            if (activeTab === 'overall') {
+                renderOverallTable();
+            } else {
+                renderYearlyTable();
+            }
+        }
+
+        // 获取所有相关词形
+        function getAllRelatedWords(word) {
+            // 查找该单词的词根
+            for (let stem in allData.stemToWords) {
+                if (allData.stemToWords[stem].includes(word)) {
+                    return allData.stemToWords[stem];
+                }
+            }
+            return [word];
+        }
+
+        // 渲染总体统计表格
+        function renderOverallTable() {
+            const tbody = document.getElementById('overallTableBody');
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="4">没有找到匹配的单词</td></tr>';
+                return;
+            }
+
+            filteredData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                const yearBadges = item.years.map(y => 
+                    `<span class="year-badge">${y}</span>`
+                ).join('');
+
+                row.innerHTML = `
+                    <td class="rank">${index + 1}</td>
+                    <td class="word">
+                        <div>${item.word}</div>
+                        <div class="word-forms">词形: ${getAllRelatedWords(item.word).join(', ')}</div>
+                    </td>
+                    <td class="frequency">${item.total}</td>
+                    <td class="years">${yearBadges}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 渲染按年份统计表格
+        function renderYearlyTable() {
+            const tbody = document.getElementById('yearlyTableBody');
+            tbody.innerHTML = '';
+
+            if (!currentYear) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="5">请选择年份</td></tr>';
+                return;
+            }
+
+            // 过滤该年份有数据的单词
+            const yearlyData = filteredData.filter(item => item.years.includes(currentYear));
+            
+            if (yearlyData.length === 0) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="5">该年份没有找到匹配的单词</td></tr>';
+                return;
+            }
+
+            // 按该年频率排序
+            yearlyData.sort((a, b) => (b.yearly[currentYear] || 0) - (a.yearly[currentYear] || 0));
+
+            yearlyData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                const yearlyFreq = item.yearly[currentYear] || 0;
+                const yearBadges = item.years.map(y => 
+                    `<span class="year-badge" style="background: ${y === currentYear ? '#ffe7b6' : '#e7f3ff'}; color: ${y === currentYear ? '#cc6600' : '#0066cc'}">${y}</span>`
+                ).join('');
+
+                row.innerHTML = `
+                    <td class="rank">${index + 1}</td>
+                    <td class="word">
+                        <div>${item.word}</div>
+                        <div class="word-forms">词形: ${getAllRelatedWords(item.word).join(', ')}</div>
+                    </td>
+                    <td class="frequency">${yearlyFreq}</td>
+                    <td class="frequency">${item.total}</td>
+                    <td class="years">${yearBadges}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 页面加载时执行
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
